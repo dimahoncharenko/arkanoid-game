@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.main {
+  display: grid;
+  padding: 0 calc(50% - 500px);
+  font-size: 2rem;
+  gap: 1em;
+}
+
+.game,
+.background,
+.gameWon {
+  grid-area: 1/-1;
+}
+
+.gameWon {
+  display: none;
+  justify-self: center;
+  align-self: center;
+  text-align: center;
+  background-color: white;
+  padding: 1em;
+  border-radius: 0.5em;
+  z-index: 100;
+}
+
+.gameWon.active {
+  display: block;
+}
+
+.display {
+  display: flex;
+  justify-content: space-between;
+}
+
+#score,
+#info {
+  min-width: 200px;
+}
