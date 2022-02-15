@@ -22,14 +22,6 @@ export class Paddle extends Actor {
     window.addEventListener("keyup", this.handleKeyUp.bind(this));
   }
 
-  update() {
-    if (this.moveLeft && this.pos.x > 0) {
-      this.pos.x -= this.speed;
-    } else if (this.moveRight && this.pos.x < STAGE_WIDTH - this.width) {
-      this.pos.x += this.speed;
-    }
-  }
-
   handleKeyDown({ key }: KeyboardEvent) {
     switch (key) {
       case "ArrowLeft":
@@ -49,6 +41,14 @@ export class Paddle extends Actor {
       case "ArrowRight":
         this.moveRight = false;
         break;
+    }
+  }
+
+  update() {
+    if (this.moveLeft && this.pos.x > 0) {
+      this.pos.x -= this.speed;
+    } else if (this.moveRight && this.pos.x < STAGE_WIDTH - this.width) {
+      this.pos.x += this.speed;
     }
   }
 }

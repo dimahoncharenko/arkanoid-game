@@ -2,22 +2,22 @@
 import { Actor } from "~/types";
 
 // Game constants
-import { STAGE_WIDTH, STAGE_HEIGHT } from "~/setup";
+import { STAGE_HEIGHT, STAGE_WIDTH } from "~/setup";
 
 export class GameController {
   constructor(
     private ctx: CanvasRenderingContext2D,
     private startBtn: HTMLButtonElement,
-    private infoEl: HTMLDivElement,
-    private scoreEl: HTMLDivElement
+    private scoreEl: HTMLDivElement,
+    private modal: HTMLDivElement
   ) {}
-
-  clear() {
-    this.ctx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
-  }
 
   initStartButtonHandler(callback: (this: this) => void) {
     this.startBtn.addEventListener("click", callback.bind(this));
+  }
+
+  clearField() {
+    this.ctx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
   }
 
   drawActor(actor: Actor) {
@@ -34,11 +34,25 @@ export class GameController {
     actors.forEach((actor) => this.drawActor(actor));
   }
 
-  drawInfo(text: string) {
-    this.infoEl.innerHTML = text;
+  drawScore(score: string | number) {
+    this.scoreEl.textContent = score.toString();
   }
 
-  drawScore(score: number | string) {
-    this.scoreEl.innerHTML = score.toString();
+  openModal(message: string, score: number | string) {
+    this.modal.children[0].textContent = message;
+    this.modal.children[1].textContent = `Your score: ${score}`;
+    this.modal.classList.add("active");
+  }
+
+  closeModal() {
+    this.modal.classList.remove("active");
+  }
+
+  hideStartButton() {
+    this.startBtn.style.display = "none";
+  }
+
+  showStartButton() {
+    this.startBtn.style.display = "inline-block";
   }
 }

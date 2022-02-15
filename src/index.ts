@@ -1,126 +1,152 @@
-// Game controller
-import { GameController } from "~/controllers/GameController";
-
-// Actors
-import { Ball } from "./actors/Ball";
-import { Paddle } from "./actors/Paddle";
-import { Brick } from "./actors/Brick";
+// Controllers
+import { GameController } from "./controllers/GameController";
 
 // Helpers
-import { Collision, createBall, createBricks, createPaddle } from "./helpers";
-
-// Game constants
-import { STAGE_HEIGHT, STAGE_WIDTH, TEST } from "./setup";
+import { createBricks, createBall, createPaddle, Collision } from "./helpers";
 
 // Types
-type GameStatus = {
+import { Brick } from "~/actors/Brick";
+import { Paddle } from "~/actors/Paddle";
+import { Ball } from "~/actors/Ball";
+
+// Game constants
+import {
+  STAGE_WIDTH,
+  STAGE_HEIGHT,
+  BRICK_IMAGES,
+  BRICK_WIDTH,
+  BRICK_HEIGHT,
+} from "./setup";
+
+type GameState = {
   score: number;
   isGameOver: boolean;
   isGameWon: boolean;
-  ball: Ball;
-  paddle: Paddle;
-  bricks: Brick[];
+  bricks: Brick[] | null;
+  paddle: Paddle | null;
+  ball: Ball | null;
   collision?: Collision;
 };
 
 // Set up game status
-let status: GameStatus = {
+let state: GameState = {
   score: 0,
   isGameOver: false,
   isGameWon: false,
-  ball: createBall(),
-  paddle: createPaddle(),
-  bricks: createBricks(),
+  bricks: null,
+  ball: null,
+  paddle: null,
   collision: new Collision(),
 };
 
 // Set up game functions
-function startGame(
-  this: GameController,
-  status: GameStatus,
-  modal: HTMLDivElement
-) {
-  modal.classList.remove("active");
-  status.isGameOver = false;
-  status.isGameWon = false;
-  status.score = 0;
-  this.drawInfo("");
-  this.drawScore(status.score);
-
-  animate(this, status, modal);
+function startGame(this: GameController, state: GameState) {
+  state.score = 0;
+  state.isGameOver = false;
+  state.isGameWon = false;
+  state.ball = createBall();
+  state.bricks = createBricks();
+  state.paddle = createPaddle();
+  this.drawScore(state.score);
+  this.closeModal();
+  this.hideStartButton();
 }
 
-function setGameOver(controller: GameController) {
-  controller.drawInfo("Game Over!");
+function setGameOver(controller: GameController, state: GameState) {
+  state.isGameOver = true;
+  controller.openModal("Game is Over!", state.score);
+  controller.showStartButton();
 }
 
-function setGameWon(controller: GameController, modal: HTMLDivElement) {
-  modal.classList.add("active");
-  controller.drawInfo("Game Won!");
+function setGameWon(controller: GameController, state: GameState) {
+  state.isGameWon = true;
+  controller.openModal("Congratulations!", state.score);
+  controller.showStartButton();
 }
 
 // Set up game loop
-function animate(
-  controller: GameController,
-  status: GameStatus,
-  modal: HTMLDivElement
-) {
-  // Clear whole canvas
-  controller.clear();
+function animate(controller: GameController, state: GameState) {
+  controller.clearField();
 
-  // manage drawing actors
-  controller.drawActors(status.bricks);
-  controller.drawActor(status.paddle);
-  controller.drawActor(status.ball);
+  // manage drawing and moving of actors
+  if (state.bricks) {
+    controller.drawActors(state.bricks);
 
-  // manage moving actors
-  status.ball.update();
-  status.paddle.update();
+    // handle game won
+    if (state.bricks.length <= 0) setGameWon(controller, state);
+  }
 
-  // handle collision of actors
-  if (status.collision) {
-    // collision between walls, paddle and ball
-    status.collision.activateBallCollision(status.ball, status.paddle);
+  if (state.ball) {
+    controller.drawActor(state.ball);
+    state.ball.update();
 
-    // collision between bricks and ball
-    if (status.collision.isCollidingBricks(status.ball, status.bricks)) {
-      status.score++;
-      controller.drawScore(status.score);
+    // handle game over
+    if (state.ball.pos.y > STAGE_HEIGHT && !state.isGameWon)
+      setGameOver(controller, state);
+
+    // handle collision
+    if (state.collision) {
+      // handle collision between walls and the ball
+      state.collision.activateCollisionBetweenBallAndWalls(state.ball);
+
+      // handle collision between the paddle and the ball
+      if (
+        state.collision.isCollidingBetweenBallAndPaddle(
+          state.ball,
+          state.paddle!
+        )
+      ) {
+        state.ball.changeYDirection();
+      }
+
+      // handle collision between bricks and the ball
+      const { index } = state.collision.isCollidingBetweenBallAndBricks(
+        state.ball,
+        state.bricks!
+      );
+
+      if (index > -1) {
+        state.score++;
+        state.ball.changeYDirection();
+
+        if (state.bricks![index].energy === 1) {
+          state.bricks!.splice(index, 1);
+        } else {
+          state.bricks![index].energy--;
+        }
+
+        controller.drawScore(state.score);
+      }
     }
   }
 
-  // handle when game is over
-  if (status.ball.pos.y > STAGE_HEIGHT) return setGameOver(controller);
-  // handle when game is won
-  if (status.bricks.length <= 0) return setGameWon(controller, modal);
-
-  if (TEST) {
-    console.log(status.bricks);
-    console.log("Frame!");
+  if (state.paddle) {
+    controller.drawActor(state.paddle);
+    state.paddle.update();
   }
 
-  requestAnimationFrame(() => animate(controller, status, modal));
+  requestAnimationFrame(animate.bind({}, controller, state));
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Manage querying necessary elements
   const canvas = document.querySelector<HTMLCanvasElement>("#game");
-  const startBtn = document.querySelector<HTMLButtonElement>("#start");
-  const infoEl = document.querySelector<HTMLDivElement>("#info");
   const scoreEl = document.querySelector<HTMLDivElement>("#score");
-  const gameWon = document.querySelector<HTMLDivElement>("#gameWon");
+  const startBtn = document.querySelector<HTMLButtonElement>("#start");
+  const modal = document.querySelector<HTMLDivElement>("#modal");
 
-  if (canvas && startBtn && infoEl && scoreEl && gameWon) {
+  if (canvas && scoreEl && startBtn && modal) {
+    const ctx = canvas.getContext("2d");
     canvas.width = STAGE_WIDTH;
     canvas.height = STAGE_HEIGHT;
-    const ctx = canvas.getContext("2d");
 
     if (ctx) {
       // Set up game controller
-      const controller = new GameController(ctx, startBtn, infoEl, scoreEl);
-      controller.initStartButtonHandler(
-        startGame.bind(controller, status, gameWon)
-      );
+      const controller = new GameController(ctx, startBtn, scoreEl, modal);
+
+      controller.initStartButtonHandler(startGame.bind(controller, state));
+
+      // Run game loop
+      requestAnimationFrame(() => animate(controller, state));
     }
   }
 });
